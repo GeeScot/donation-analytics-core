@@ -82,7 +82,9 @@ async function GetStats(req: Request, res: Response) {
   }
 
   const result = {
-    ...stats[0],
+    total: stats[0].total,
+    average: parseFloat(stats[0].average.toFixed(2)),
+    count: stats[0].count,
     latestDonations: latestDonations.map(anonymiseDonation),
     topDonations: topDonations.map(anonymiseDonation),
     hourlyDonations: hourlyDonations.map((hourlyGroup: any) => {
