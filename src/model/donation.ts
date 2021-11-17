@@ -11,9 +11,10 @@ export type Donation = {
   sustained: boolean;
 }
 
-export function anonymiseDonation(donation: Donation) {
+export function formatDonation(donation: Donation) {
   return {
     completedAt: new Date(donation.completedAt),
-    amount: donation.amount 
+    amount: donation.amount,
+    name: donation.name
   };
 }

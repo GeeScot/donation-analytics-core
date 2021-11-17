@@ -1,7 +1,6 @@
-import { ObjectId } from "bson";
 import { Router, Request, Response, NextFunction, Express } from "express";
 import Repository from "../db/repository";
-import { anonymiseDonation, Donation } from "../model/donation";
+import { formatDonation, Donation } from "../model/donation";
 
 declare global {
   namespace Express {
@@ -52,6 +51,36 @@ async function GetStats(req: Request, res: Response) {
     ])
     .toArray();
 
+  const group1Donations = <any>await collection.find({
+    $and: [
+      { amount: { $gte: 1 } },
+      { amount: { $lt: 10 } }
+    ]
+  }).toArray();
+  const group2Donations = <any>await collection.find({
+    $and: [
+      { amount: { $gte: 10 } },
+      { amount: { $lt: 50 } }
+    ]
+  }).toArray();
+  const group3Donations = <any>await collection.find({
+    $and: [
+      { amount: { $gte: 50 } },
+      { amount: { $lt: 200 } }
+    ]
+  }).toArray();
+  const group4Donations = <any>await collection.find({
+    $and: [
+      { amount: { $gte: 200 } },
+      { amount: { $lt: 500 } }
+    ]
+  }).toArray();
+  const group5Donations = <any>await collection.find({
+    $and: [
+      { amount: { $gte: 500 } }
+    ]
+  }).toArray();
+
   const hourlyDonations = await collection.aggregate([
     { $sort: { completedAt: 1 } },
     {
@@ -85,8 +114,8 @@ async function GetStats(req: Request, res: Response) {
     total: stats[0].total,
     average: parseFloat(stats[0].average.toFixed(2)),
     count: stats[0].count,
-    latestDonations: latestDonations.map(anonymiseDonation),
-    topDonations: topDonations.map(anonymiseDonation),
+    latestDonations: latestDonations.map(formatDonation),
+    topDonations: topDonations.map(formatDonation),
     hourlyDonations: hourlyDonations.map((hourlyGroup: any) => {
       return {
         hour: hourlyGroup._id,
@@ -95,7 +124,29 @@ async function GetStats(req: Request, res: Response) {
         count: hourlyGroup.count
       }
     }),
-    hourlyBalance: hourlyBalance
+    hourlyBalance: hourlyBalance,
+    group: [
+      {
+        key: '$1 - $9.99',
+        count: group1Donations.length
+      },
+      {
+        key: '$10 - $49.99',
+        count: group2Donations.length
+      },
+      {
+        key: '$50 - $199.99',
+        count: group3Donations.length
+      },
+      {
+        key: '$200 - $499.99',
+        count: group4Donations.length
+      },
+      {
+        key: 'Over $500',
+        count: group5Donations.length
+      }
+    ]
   };
 
   res.json(result);
