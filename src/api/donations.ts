@@ -1,34 +1,69 @@
-import { Router, Request, Response, NextFunction, Express } from "express";
+import { Router, Request, Response, Express } from "express";
 import Repository from "../db/repository";
 import { formatDonation, Donation } from "../model/donation";
 
-declare global {
-  namespace Express {
-    export interface Request {
-      donations: Repository<Donation>;
-    }
-  }
-}
+async function GetAllWithModify(req: Request, res: Response) {
+  const repo = new Repository<Donation>(req.params.eventName);
+  const collection = repo.getCollection();
+  const documentCount = await collection.countDocuments({});
 
-async function middleware(
-  req: Request,
-  _: Response,
-  next: NextFunction
-): Promise<void> {
-  req.donations = new Repository<Donation>("donations");
-  await next();
+  if (documentCount === 0) {
+    res.sendStatus(500);
+    return;
+  }
+
+  const donations = await repo.all({}, { completedAt: 1 });
+
+  for (let i = 0; i < donations.length; i++) {
+    await repo.update({
+      _id: donations[i]._id
+    }, {
+      $set: {
+        completedAt: new Date(donations[i].completedAt),
+        updatedAt: new Date(donations[i].updatedAt)
+      }
+    })
+  }
+
+  res.json(donations);
 }
 
 async function GetAll(req: Request, res: Response) {
-  const donations = await req.donations.all({}, { completedAt: 1 });
+  const repo = new Repository<Donation>(req.params.eventName);
+  const collection = repo.getCollection();
+  const documentCount = await collection.countDocuments({});
+
+  if (documentCount === 0) {
+    res.sendStatus(500);
+    return;
+  }
+
+  const donations = await repo.all({}, { completedAt: 1 });
+
+  // for (let i = 0; i < donations.length; i++) {
+  //   await repo.update({
+  //     _id: donations[i]._id
+  //   }, {
+  //     $set: {
+  //       completedAt: new Date(donations[i].completedAt),
+  //       updatedAt: new Date(donations[i].updatedAt)
+  //     }
+  //   })
+  // }
+
   res.json(donations);
 }
 
 async function GetStats(req: Request, res: Response) {
-  const collection = req.donations.getCollection();
+  const repo = new Repository<Donation>(req.params.eventName);
+  const collection = repo.getCollection();
+  const documentCount = await collection.countDocuments({});
+  
+  if (documentCount === 0) {
+    res.sendStatus(500);
+    return;
+  }
 
-  const latestDonations = await req.donations.all({}, { completedAt: -1 }, 5);
-  const topDonations = await req.donations.all({}, { amount: -1 }, 5);
   const stats = <any>await collection
     .aggregate([
       { $sort: { completedAt: -1 } },
@@ -54,30 +89,30 @@ async function GetStats(req: Request, res: Response) {
   const group1Donations = <any>await collection.find({
     $and: [
       { amount: { $gte: 1 } },
-      { amount: { $lt: 10 } }
+      { amount: { $lte: 10 } }
     ]
   }).toArray();
   const group2Donations = <any>await collection.find({
     $and: [
-      { amount: { $gte: 10 } },
-      { amount: { $lt: 50 } }
+      { amount: { $gt: 10 } },
+      { amount: { $lte: 50 } }
     ]
   }).toArray();
   const group3Donations = <any>await collection.find({
     $and: [
-      { amount: { $gte: 50 } },
-      { amount: { $lt: 200 } }
+      { amount: { $gt: 50 } },
+      { amount: { $lte: 200 } }
     ]
   }).toArray();
   const group4Donations = <any>await collection.find({
     $and: [
-      { amount: { $gte: 200 } },
-      { amount: { $lt: 500 } }
+      { amount: { $gt: 200 } },
+      { amount: { $lte: 500 } }
     ]
   }).toArray();
   const group5Donations = <any>await collection.find({
     $and: [
-      { amount: { $gte: 500 } }
+      { amount: { $gt: 500 } }
     ]
   }).toArray();
 
@@ -94,6 +129,7 @@ async function GetStats(req: Request, res: Response) {
         // _id: { year: "$y", month: "$m", day: "$d", hour: "$h" },
         _id: "$hour",
         average: { $avg: "$amount" },
+        standardDeviation: { $stdDevPop: "$amount" },
         total: { $sum: "$amount" },
         count: { $sum: 1 }
       }
@@ -114,12 +150,11 @@ async function GetStats(req: Request, res: Response) {
     total: stats[0].total,
     average: parseFloat(stats[0].average.toFixed(2)),
     count: stats[0].count,
-    latestDonations: latestDonations.map(formatDonation),
-    topDonations: topDonations.map(formatDonation),
     hourlyDonations: hourlyDonations.map((hourlyGroup: any) => {
       return {
         hour: hourlyGroup._id,
         average: parseFloat(hourlyGroup.average.toFixed(2)),
+        standardDeviation: parseFloat(hourlyGroup.standardDeviation.toFixed(2)),
         total: parseFloat(hourlyGroup.total.toFixed(2)),
         count: hourlyGroup.count
       }
@@ -127,19 +162,19 @@ async function GetStats(req: Request, res: Response) {
     hourlyBalance: hourlyBalance,
     group: [
       {
-        key: '$1 - $9.99',
+        key: '$1 - $10',
         count: group1Donations.length
       },
       {
-        key: '$10 - $49.99',
+        key: '$10.01 - $50',
         count: group2Donations.length
       },
       {
-        key: '$50 - $199.99',
+        key: '$50.01 - $200',
         count: group3Donations.length
       },
       {
-        key: '$200 - $499.99',
+        key: '$200.01 - $500',
         count: group4Donations.length
       },
       {
@@ -153,10 +188,10 @@ async function GetStats(req: Request, res: Response) {
 }
 
 export default function (app: Express) {
-  const router = Router();
-  router.use(middleware);
-  router.get("/", GetAll);
-  router.get("/stats", GetStats);
+  const router = Router({ mergeParams: true });
+  router.get("/:eventName", GetAll);
+  router.get("/:eventName/fix", GetAllWithModify);
+  router.get("/:eventName/stats", GetStats);
 
   app.use("/donations", router);
 }

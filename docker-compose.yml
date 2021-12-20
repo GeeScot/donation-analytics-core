@@ -1,11 +1,11 @@
 version: "3.9"
 
 services:
-  tiltify-donation-stats:
-    container_name: tiltify-donation-stats
-    image: codescot/tiltify-donation-stats
+  thenooktiltify:
+    container_name: thenooktiltify
+    image: codescot/thenooktiltify
     restart: unless-stopped
     ports:
       - "3000:3000"
     env_file: 
-      - tiltify-donation-stats.env
+      - thenooktiltify.env
