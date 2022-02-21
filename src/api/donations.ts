@@ -12,8 +12,8 @@ async function GetAll(req: Request, res: Response) {
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
   
   const collectionExists = await hasCollection(campaignCollectionKey);
-  if (collectionExists) {
-    res.sendStatus(200);
+  if (!collectionExists) {
+    res.sendStatus(500);
     return;
   }
 
