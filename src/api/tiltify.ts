@@ -101,6 +101,13 @@ async function CalculateStats(req: Request, res: Response) {
   const donationsRepo = new Repository<Donation>(campaignCollectionKey);
   const collection = donationsRepo.getCollection();
 
+  const statsRepo = new Repository<Stats>('stats');
+  const storedStats = await statsRepo.get({ key: campaignCollectionKey });
+  if (storedStats) {
+    res.sendStatus(200);
+    return;
+  }
+
   const stats = <any>await collection
     .aggregate([
       { $sort: { completedAt: -1 } },
@@ -226,7 +233,6 @@ async function CalculateStats(req: Request, res: Response) {
     ],
   };
 
-  const statsRepo = new Repository<Stats>('stats');
   await statsRepo.insert({
     key: campaignCollectionKey,
     data: result
