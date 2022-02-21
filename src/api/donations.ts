@@ -2,7 +2,7 @@ import { Router, Request, Response, Express } from "express";
 import { hasCollection } from "../db/mongodb";
 import Repository from "../db/repository";
 import { Donation } from "../model/donation";
-import { Stats } from "../model/stats";
+import { Analytics } from "../model/analytics";
 import { createCollectionKey } from "../utils/collection.utilities";
 import { getCampaignDetails } from "../utils/request.utilities";
 
@@ -27,7 +27,7 @@ async function GetStats(req: Request, res: Response) {
   const { userId, campaignSlug } = getCampaignDetails(req);
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
 
-  const repo = new Repository<Stats>('stats');
+  const repo = new Repository<Analytics>('analytics');
   const stats = await repo.get({ key: campaignCollectionKey });
 
   res.json(stats);
@@ -35,7 +35,7 @@ async function GetStats(req: Request, res: Response) {
 
 export default function (app: Express) {
   const router = Router({ mergeParams: true });
-  router.get("/:userId/:campaignSlug/stats", GetStats);
+  router.get("/:userId/:campaignSlug/analytics", GetStats);
   router.get("/:userId/:campaignSlug", GetAll);
 
   app.use("/donations", router);

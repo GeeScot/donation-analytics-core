@@ -3,7 +3,7 @@ import Repository from "../db/repository";
 import { Donation } from "../model/donation";
 import config from "../config";
 import axios from "axios";
-import { Stats } from "../model/stats";
+import { Analytics } from "../model/analytics";
 import { createCollectionKey } from "../utils/collection.utilities";
 import { getCampaignDetails } from "../utils/request.utilities";
 import { hasCollection } from "../db/mongodb";
@@ -26,7 +26,7 @@ async function ResetStats(req: Request, res: Response) {
   await donationsRepo.removeCollection();
 
   // Remove Stored Stats
-  const statsRepo = new Repository<Stats>('stats');
+  const statsRepo = new Repository<Analytics>('analytics');
   await statsRepo.remove({ key: campaignCollectionKey });
 
   res.status(200);
@@ -101,7 +101,7 @@ async function CalculateStats(req: Request, res: Response) {
   const donationsRepo = new Repository<Donation>(campaignCollectionKey);
   const collection = donationsRepo.getCollection();
 
-  const statsRepo = new Repository<Stats>('stats');
+  const statsRepo = new Repository<Analytics>('analytics');
   const storedStats = await statsRepo.get({ key: campaignCollectionKey });
   if (storedStats) {
     res.sendStatus(200);
@@ -236,7 +236,7 @@ async function CalculateStats(req: Request, res: Response) {
   await statsRepo.insert({
     key: campaignCollectionKey,
     data: result
-  } as Stats)
+  } as Analytics)
 
   res.sendStatus(200);
 }

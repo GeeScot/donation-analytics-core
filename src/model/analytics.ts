@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 
-export type Stats = {
+export type Analytics = {
   _id: ObjectId;
   key: string;
   data: any;
