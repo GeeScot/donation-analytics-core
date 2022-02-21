@@ -14,7 +14,7 @@ const client = axios.create({
   }
 });
 
-const campaignUrlRegex = /(https:\/\/tiltify.com\/)@([A-Za-z]+)\/([A-Za-z0-9-]+)/g;
+// const campaignUrlRegex = /(https:\/\/tiltify.com\/)@([A-Za-z]+)\/([A-Za-z0-9-]+)/g;
 
 async function ResetStats(req: Request, res: Response) {
   const userId = req.params.userId;
@@ -235,7 +235,7 @@ async function CalculateStats(req: Request, res: Response) {
     data: result
   } as Stats)
 
-  res.redirect(`${config.FrontendBaseUrl}/stats/${userId}/${campaignSlug}`);
+  res.sendStatus(200);
 }
 
 export default function (app: Express) {
