@@ -248,5 +248,5 @@ export default function (app: Express) {
   router.get("/:userId/:campaignSlug/reset", ResetStats);
   router.get("/:userId/:campaignSlug", GetCampaign);
 
-  app.use("/tiltify", router);
+  app.use("/campaign", router);
 }
