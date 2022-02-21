@@ -4,11 +4,11 @@ import Repository from "../db/repository";
 import { Donation } from "../model/donation";
 import { Stats } from "../model/stats";
 import { createCollectionKey } from "../utils/collection.utilities";
+import { getCampaignDetails } from "../utils/request.utilities";
 
 
 async function GetAll(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
   
   const collectionExists = await hasCollection(campaignCollectionKey);
@@ -24,8 +24,7 @@ async function GetAll(req: Request, res: Response) {
 }
 
 async function GetStats(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
 
   const repo = new Repository<Stats>('stats');

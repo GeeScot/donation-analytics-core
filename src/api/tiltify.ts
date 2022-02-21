@@ -5,6 +5,7 @@ import config from "../config";
 import axios from "axios";
 import { Stats } from "../model/stats";
 import { createCollectionKey } from "../utils/collection.utilities";
+import { getCampaignDetails } from "../utils/request.utilities";
 import { hasCollection } from "../db/mongodb";
 
 const client = axios.create({
@@ -17,8 +18,7 @@ const client = axios.create({
 // const campaignUrlRegex = /(https:\/\/tiltify.com\/)@([A-Za-z]+)\/([A-Za-z0-9-]+)/g;
 
 async function ResetStats(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
 
   // Remove Donations Collection
@@ -33,8 +33,7 @@ async function ResetStats(req: Request, res: Response) {
 }
 
 async function GetCampaign(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
 
   const targetUrl = `/api/v3/users/${userId}/campaigns/${campaignSlug}`;
   const { data: campaign } = await client.get(targetUrl);
@@ -49,8 +48,7 @@ async function GetCampaign(req: Request, res: Response) {
 }
 
 async function CacheDonations(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
 
   const collectionExists = await hasCollection(campaignCollectionKey);
@@ -97,8 +95,7 @@ async function CacheDonations(req: Request, res: Response) {
 
 // Calculate the stats once and store in db use code from donations.ts
 async function CalculateStats(req: Request, res: Response) {
-  const userId = req.params.userId;
-  const campaignSlug = req.params.campaignSlug.replace("@", "");
+  const { userId, campaignSlug } = getCampaignDetails(req);
 
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
   const donationsRepo = new Repository<Donation>(campaignCollectionKey);
