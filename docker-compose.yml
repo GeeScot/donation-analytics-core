@@ -1,11 +1,11 @@
 version: "3.9"
 
 services:
-  thenooktiltify:
-    container_name: thenooktiltify
-    image: codescot/thenooktiltify
+  donation-analytics-core:
+    container_name: donation-analytics-core
+    image: codescot/donation-analytics-core
     restart: unless-stopped
     ports:
       - "3000:3000"
     env_file: 
-      - thenooktiltify.env
+      - donation-analytics-core.env
