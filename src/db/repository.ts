@@ -1,12 +1,11 @@
-import { Db, FilterQuery, Collection, ObjectID, OptionalId, UpdateQuery, SortOptionObject } from "mongodb";
-import config from '../config';
-import { collection } from '../db/mongodb';
+import { FilterQuery, Collection, OptionalId, UpdateQuery, SortOptionObject } from "mongodb";
+import * as mongo from '../db/mongodb';
 
 export default class Repository<TModel> {
   private collection: Collection<TModel>;
 
   constructor(collectionName: string) {
-    this.collection = collection<TModel>(config.DatabaseName, collectionName);
+    this.collection = mongo.getCollection<TModel>(collectionName);
   }
 
   async all(filter: FilterQuery<TModel>, sort: SortOptionObject<TModel> = {}, limit = 0): Promise<TModel[]> {
@@ -21,7 +20,7 @@ export default class Repository<TModel> {
     return await this.collection.findOne(query);
   }
 
-  async insert(objs: TModel[]): Promise<void> {
+  async insert(...objs: TModel[]): Promise<void> {
     await this.collection.insertMany(objs.map(obj => <OptionalId<TModel>>(obj)));
   }
 
@@ -31,6 +30,10 @@ export default class Repository<TModel> {
 
   async remove(filter: FilterQuery<TModel>): Promise<void> {
     await this.collection.deleteMany(filter);
+  }
+
+  async removeCollection(): Promise<void> {
+    await mongo.removeCollection(this.collection.collectionName);
   }
 
   getCollection(): Collection<TModel> {

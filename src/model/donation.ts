@@ -10,11 +10,3 @@ export type Donation = {
   updatedAt: Date;
   sustained: boolean;
 }
-
-export function formatDonation(donation: Donation) {
-  return {
-    completedAt: new Date(donation.completedAt),
-    amount: donation.amount,
-    name: donation.name
-  };
-}

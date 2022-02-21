@@ -1,6 +1,6 @@
 import { Router, Request, Response, Express } from "express";
 import Repository from "../db/repository";
-import { formatDonation, Donation } from "../model/donation";
+import { Donation } from "../model/donation";
 
 async function GetAllWithModify(req: Request, res: Response) {
   const repo = new Repository<Donation>(req.params.eventName);
