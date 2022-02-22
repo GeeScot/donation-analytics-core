@@ -235,6 +235,7 @@ async function CalculateStats(req: Request, res: Response) {
 
   await statsRepo.insert({
     key: campaignCollectionKey,
+    date: new Date(),
     data: result
   } as Analytics)
 
