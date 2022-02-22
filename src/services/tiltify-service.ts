@@ -34,7 +34,7 @@ const createTiltifyService = () => {
 
     do {
       const { data: donations } = await client.get(donationsTargetUrl);
-      donationsTargetUrl = donations.prev;
+      donationsTargetUrl = donations.links.prev;
 
       donationCount = donations.data.length;
       allDonations.push(...donations.data);
