@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { connect } from './db/mongodb';
-import createExpressService from './services/express.service';
+import createExpressService from './services/express-service';
 
 async function main(): Promise<void> {
   try {
