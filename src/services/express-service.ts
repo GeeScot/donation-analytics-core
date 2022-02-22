@@ -19,8 +19,9 @@ const createExpressService = () => {
   
   dynamic('../api', app);
 
-  app.listen(3000, () => {
-    log('listening on port 3000');
+  const port = parseInt(process.env.PORT ?? '3000');
+  app.listen(port, () => {
+    log(`listening on port ${port}`);
   });
 }
 
