@@ -3,8 +3,7 @@ import { hasCollection } from "../db/mongodb";
 import Repository from "../db/repository";
 import { Donation } from "../model/donation";
 import { Analytics } from "../model/analytics";
-import { createCollectionKey } from "../utils/collection.utilities";
-import { getCampaignDetails } from "../utils/request.utilities";
+import { getCampaignDetails, createCollectionKey } from "../utils/request";
 
 
 async function GetAll(req: Request, res: Response) {

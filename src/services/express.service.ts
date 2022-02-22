@@ -11,7 +11,7 @@ const middleware = async (_request: express.Request, _response: express.Response
   await next();
 }
 
-export default function createExpressService() {
+const createExpressService = () => {
   const app = express();
   app.use(cors({ origin: ['http://localhost:3000', 'http://localhost:3001', /gee\.dev$/] }));
   app.use(express.json());
@@ -23,3 +23,5 @@ export default function createExpressService() {
     log('listening on port 3000');
   });
 }
+
+export default createExpressService;

@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 
 export type Donation = {
-  _id: ObjectId;
+  _id?: ObjectId;
   id: number;
   amount: number;
   name: string;

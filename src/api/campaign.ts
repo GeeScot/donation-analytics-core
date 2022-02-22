@@ -1,21 +1,16 @@
 import { Router, Request, Response, Express } from "express";
+import { hasCollection } from "../db/mongodb";
 import Repository from "../db/repository";
 import { Donation } from "../model/donation";
-import config from "../config";
-import axios from "axios";
 import { Analytics } from "../model/analytics";
-import { createCollectionKey } from "../utils/collection.utilities";
-import { getCampaignDetails } from "../utils/request.utilities";
-import { hasCollection } from "../db/mongodb";
+import createTiltifyService from "../services/tiltify.service";
+import { getCampaignDetails, createCollectionKey } from "../utils/request";
+import createCampaignAnalyticsUtility from "../utils/analytics";
 
-const client = axios.create({
-  baseURL: "https://tiltify.com",
-  headers: {
-    'Authorization': `Bearer ${config.TiltifyAppToken}`
-  }
-});
+
 
 // const campaignUrlRegex = /(https:\/\/tiltify.com\/)@([A-Za-z]+)\/([A-Za-z0-9-]+)/g;
+const tiltify = createTiltifyService();
 
 async function ResetStats(req: Request, res: Response) {
   const { userId, campaignSlug } = getCampaignDetails(req);
@@ -34,9 +29,7 @@ async function ResetStats(req: Request, res: Response) {
 
 async function GetCampaign(req: Request, res: Response) {
   const { userId, campaignSlug } = getCampaignDetails(req);
-
-  const targetUrl = `/api/v3/users/${userId}/campaigns/${campaignSlug}`;
-  const { data: campaign } = await client.get(targetUrl);
+  const campaign = await tiltify.getCampaign(userId, campaignSlug);
 
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
   const collectionExists = await hasCollection(campaignCollectionKey);
@@ -56,39 +49,16 @@ async function CacheDonations(req: Request, res: Response) {
     res.sendStatus(200);
     return;
   }
+  
+  try {
+    const allDonations = await tiltify.getDonations(userId, campaignSlug);
 
-  const targetUrl = `/api/v3/users/${userId}/campaigns/${campaignSlug}`;
-  const { data: campaign } = await client.get(targetUrl);
-
-  // if campaign has not ended then stop here?
-  const campaignEndDate = new Date(campaign.data.endsAt);
-  if (campaignEndDate > new Date()) {
-    res.sendStatus(500);
+    const donationsRepo = new Repository<Donation>(campaignCollectionKey);
+    await donationsRepo.insert(...allDonations);
+  } catch (e) {
+    res.status(400).send(e);
     return;
   }
-
-  let donationsTargetUrl = `/api/v3/campaigns/${campaign.data.id}/donations?count=100`;
-  let allDonations: Donation[] = [];
-  let donationCount = 0;
-
-  do {
-    const { data: donations } = await client.get(donationsTargetUrl);
-    donationsTargetUrl = donations.prev;
-
-    donationCount = donations.data.length;
-    allDonations.push(...donations.data);
-  } while(donationCount === 100);
-
-  allDonations = allDonations.map((donation) => {
-    return {
-      ...donation,
-      completedAt: new Date(donation.completedAt),
-      updatedAt: new Date(donation.updatedAt)
-    }
-  })
-
-  const donationsRepo = new Repository<Donation>(campaignCollectionKey);
-  await donationsRepo.insert(...allDonations);
 
   res.sendStatus(200);
 }
@@ -98,9 +68,8 @@ async function CalculateStats(req: Request, res: Response) {
   const { userId, campaignSlug } = getCampaignDetails(req);
 
   const campaignCollectionKey = createCollectionKey('donations', userId, campaignSlug);
-  const donationsRepo = new Repository<Donation>(campaignCollectionKey);
-  const collection = donationsRepo.getCollection();
 
+  // Already calculated these stats
   const statsRepo = new Repository<Analytics>('analytics');
   const storedStats = await statsRepo.get({ key: campaignCollectionKey });
   if (storedStats) {
@@ -108,136 +77,24 @@ async function CalculateStats(req: Request, res: Response) {
     return;
   }
 
-  const stats = <any>await collection
-    .aggregate([
-      { $sort: { completedAt: -1 } },
-      {
-        $group: {
-          _id: "",
-          amount: { $sum: "$amount" },
-          average: { $avg: "$amount" },
-          numberOfDonations: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          total: "$amount",
-          average: "$average",
-          count: "$numberOfDonations",
-        },
-      },
-    ])
-    .toArray();
+  // Calculate the stats
+  const donationsRepo = new Repository<Donation>(campaignCollectionKey);
+  const collection = donationsRepo.getCollection();
 
-  const group1Donations = <any>await collection
-    .find({
-      $and: [{ amount: { $gte: 1 } }, { amount: { $lte: 10 } }],
-    })
-    .toArray();
-  const group2Donations = <any>await collection
-    .find({
-      $and: [{ amount: { $gt: 10 } }, { amount: { $lte: 50 } }],
-    })
-    .toArray();
-  const group3Donations = <any>await collection
-    .find({
-      $and: [{ amount: { $gt: 50 } }, { amount: { $lte: 200 } }],
-    })
-    .toArray();
-  const group4Donations = <any>await collection
-    .find({
-      $and: [{ amount: { $gt: 200 } }, { amount: { $lte: 500 } }],
-    })
-    .toArray();
-  const group5Donations = <any>await collection
-    .find({
-      $and: [{ amount: { $gt: 500 } }],
-    })
-    .toArray();
-
-  const hourlyDonations = await collection
-    .aggregate([
-      { $sort: { completedAt: 1 } },
-      {
-        $project: {
-          hour: {
-            $dateToString: {
-              date: "$completedAt",
-              format: "%Y-%m-%dT%H:00:00.000Z",
-            },
-          },
-          amount: 1,
-        },
-      },
-      {
-        $group: {
-          // _id: { year: "$y", month: "$m", day: "$d", hour: "$h" },
-          _id: "$hour",
-          average: { $avg: "$amount" },
-          standardDeviation: { $stdDevPop: "$amount" },
-          total: { $sum: "$amount" },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ])
-    .toArray();
-
-  const hourlyBalance = [];
-  for (let i = 0; i < hourlyDonations.length; i++) {
-    const donos = hourlyDonations
-      .slice(0, i + 1)
-      .map((hourly: any) => hourly.total);
-    hourlyBalance.push({
-      hour: hourlyDonations[i]._id,
-      balance: parseFloat(donos.reduce((a, v) => a + v).toFixed(2)),
-    });
+  const analyticsUtility = createCampaignAnalyticsUtility(collection);
+  const campaignAnalytics = await analyticsUtility.getCampaignAnalytics();
+  if (!campaignAnalytics) {
+    res.sendStatus(400);
+    return;
   }
 
-  const result = {
-    total: stats[0].total,
-    average: parseFloat(stats[0].average.toFixed(2)),
-    count: stats[0].count,
-    hourlyDonations: hourlyDonations.map((hourlyGroup: any) => {
-      return {
-        hour: hourlyGroup._id,
-        average: parseFloat(hourlyGroup.average.toFixed(2)),
-        standardDeviation: parseFloat(hourlyGroup.standardDeviation.toFixed(2)),
-        total: parseFloat(hourlyGroup.total.toFixed(2)),
-        count: hourlyGroup.count,
-      };
-    }),
-    hourlyBalance: hourlyBalance,
-    group: [
-      {
-        key: "$1 - $10",
-        count: group1Donations.length,
-      },
-      {
-        key: "$10.01 - $50",
-        count: group2Donations.length,
-      },
-      {
-        key: "$50.01 - $200",
-        count: group3Donations.length,
-      },
-      {
-        key: "$200.01 - $500",
-        count: group4Donations.length,
-      },
-      {
-        key: "Over $500",
-        count: group5Donations.length,
-      },
-    ],
-  };
-
-  await statsRepo.insert({
+  const analytics: Analytics = {
     key: campaignCollectionKey,
     date: new Date(),
-    data: result
-  } as Analytics)
+    data: campaignAnalytics
+  };
+
+  await statsRepo.insert(analytics)
 
   res.sendStatus(200);
 }

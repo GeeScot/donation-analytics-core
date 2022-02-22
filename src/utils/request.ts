@@ -6,3 +6,7 @@ export function getCampaignDetails(req: Request) {
     campaignSlug: req.params.campaignSlug
   };
 }
+
+export function createCollectionKey(...args: string[]) {
+  return args.map(x => x.toLowerCase()).join('_');
+}
