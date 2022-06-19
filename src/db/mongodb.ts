@@ -1,13 +1,13 @@
-import { MongoClient, Collection } from 'mongodb';
+import { MongoClient, Collection, Document } from 'mongodb';
 import config from '../config';
 
-const mongoClient = new MongoClient(config.ConnectionString, { useUnifiedTopology: true });
+const mongoClient = new MongoClient(config.ConnectionString);
 
 async function connect(): Promise<MongoClient> {
   return await mongoClient.connect();
 }
 
-function getCollection<TModel>(collectionName: string): Collection<TModel> {
+function getCollection<TModel extends Document>(collectionName: string): Collection<TModel> {
   return mongoClient.db(config.DatabaseName).collection<TModel>(collectionName);
 }
 

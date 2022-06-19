@@ -1,14 +1,14 @@
-import { FilterQuery, Collection, OptionalId, UpdateQuery, SortOptionObject } from "mongodb";
+import { Filter, Collection, UpdateFilter, Sort, Document, WithId, OptionalUnlessRequiredId } from "mongodb";
 import * as mongo from '../db/mongodb';
 
-export default class Repository<TModel> {
+export default class Repository<TModel extends Document> {
   private collection: Collection<TModel>;
 
   constructor(collectionName: string) {
     this.collection = mongo.getCollection<TModel>(collectionName);
   }
 
-  async all(filter: FilterQuery<TModel>, sort: SortOptionObject<TModel> = {}, limit = 0): Promise<TModel[]> {
+  async all(filter: Filter<TModel>, sort: Sort = {}, limit = 0): Promise<WithId<TModel>[]> {
     return await this.collection
       .find(filter)
       .limit(limit)
@@ -16,19 +16,19 @@ export default class Repository<TModel> {
       .toArray();
   }
 
-  async get(query: FilterQuery<TModel>): Promise<TModel | null> {
+  async get(query: Filter<TModel>): Promise<WithId<TModel> | null> {
     return await this.collection.findOne(query);
   }
 
   async insert(...objs: TModel[]): Promise<void> {
-    await this.collection.insertMany(objs.map(obj => <OptionalId<TModel>>(obj)));
+    await this.collection.insertMany(objs.map(obj => <OptionalUnlessRequiredId<TModel>>(obj)));
   }
 
-  async update(filter: FilterQuery<TModel>, updateQuery: UpdateQuery<TModel>): Promise<void> {
+  async update(filter: Filter<TModel>, updateQuery: UpdateFilter<TModel>): Promise<void> {
     await this.collection.updateOne(filter, updateQuery);
   }
 
-  async remove(filter: FilterQuery<TModel>): Promise<void> {
+  async remove(filter: Filter<TModel>): Promise<void> {
     await this.collection.deleteMany(filter);
   }
 
